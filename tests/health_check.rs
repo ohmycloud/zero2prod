@@ -5,8 +5,8 @@
 //
 // You can inspect what code gets generated using
 // `cargo expand --test health_check` (<- name of the test file)
-use std::net::TcpListener;
 use sqlx::{Connection, PgConnection};
+use std::net::TcpListener;
 use zero2prod::configuration::get_configuration;
 
 #[tokio::test]
