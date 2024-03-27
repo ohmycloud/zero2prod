@@ -1,3 +1,4 @@
+#![feature(lazy_cell)]
 //! tests/health_check.rs
 
 // `tokio::test` is the testing equivalent of `tokio::main`.
@@ -9,6 +10,14 @@ use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
 use zero2prod::configuration::{DatabaseSettings, get_configuration};
+use zero2prod::telemetry::{get_subscriber, init_subscriber};
+use once_cell::sync::Lazy;
+
+// Ensure that the `tracing` stack is only initialised once using `once_cell`
+static TRACING: Lazy<()> = Lazy::new(|| {
+    let subscriber = get_subscriber("test".into(), "debug".into());
+    init_subscriber(subscriber);
+});
 
 pub struct TestApp {
     pub address: String,
@@ -38,6 +47,9 @@ async fn health_check_works() {
 // Launch onr application in the background ~somehow~
 //
 async fn spawn_app() -> TestApp {
+    // The first time `initialize` is invoked the code in `TRACING` is executed.
+    // All other invocations will instead skip execution.
+    Lazy::force(&TRACING);
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
     // We retrieve the port assigned to us by the OS
     let port = listener.local_addr().unwrap().port();
