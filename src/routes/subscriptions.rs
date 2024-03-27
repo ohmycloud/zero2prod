@@ -2,6 +2,7 @@ use actix_web::{web, HttpResponse};
 use sqlx::types::chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
+use tracing::Instrument;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -29,7 +30,11 @@ pub async fn subscribe(
     // See the following section on `Instrumenting Futures`
     let _request_span_guard = request_span.enter();
 
-    tracing::info!("Saving new subscriber details in the database");
+    // We do not call `.enter` on query_span!
+    // `.instrument` takes care of it at the right moments
+    // in the query future lifetime
+    let query_span = tracing::info_span!("Saving new subscriber details in the database");
+
     let query = sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
@@ -42,22 +47,18 @@ pub async fn subscribe(
     )
      // Using the pool as a drop-in replacement
     .execute(pool.get_ref())
+        // First we attach the instrumentation, then we `.await` it
+    .instrument(query_span)
     .await;
 
     match query {
         Ok(_) => {
-            tracing::info!(
-                "request_id {} - New subscriber details have been saved",
-                request_id
-            );
             HttpResponse::Ok().finish()
         }
         Err(e) => {
-            tracing::error!(
-                "request_id {} - Failed to execute query: {:?}",
-                request_id,
-                e
-            );
+            // Yes, this error log falls outside of `query_span`
+            // We'll rectify it later, pinky swear!
+            tracing::error!("Failed to execute query: {:?}", e);
             HttpResponse::InternalServerError().finish()
         }
     }
