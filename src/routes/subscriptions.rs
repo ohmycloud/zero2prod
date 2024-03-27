@@ -14,6 +14,7 @@ pub async fn subscribe(
     // Retrieving a pool from the application state!
     pool: web::Data<PgPool>,
 ) -> HttpResponse {
+    log::info!("Saving new subscriber details in the database");
     let query = sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
@@ -29,12 +30,13 @@ pub async fn subscribe(
     .await;
 
     match query {
-        Ok(_) => HttpResponse::Ok().finish(),
+        Ok(_) => {
+            log::info!("New subscriber details have been saved");
+            HttpResponse::Ok().finish()
+        }
         Err(e) => {
-            println!("Failed to execute query: {}", e);
+            log::error!("Failed to execute query: {:?}", e);
             HttpResponse::InternalServerError().finish()
         }
     }
-
-
 }
