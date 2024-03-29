@@ -19,7 +19,9 @@ async fn main() -> Result<(), std::io::Error> {
     let address = format!("127.0.0.1:{}", configuration.application_port);
     let listener = TcpListener::bind(address).expect("Failed to bind random port");
     let configuration = get_configuration().expect("Failed to read configuration");
-    let connection_pool= PgPool::connect(&configuration.database.connection_string().expose_secret())
+
+    // No longer async, given that we don't actually try to connect!
+    let connection_pool= PgPool::connect_lazy(&configuration.database.connection_string().expose_secret())
         .await
         .expect("Failed to connect to Postgres.");
     run(listener, connection_pool)?.await
