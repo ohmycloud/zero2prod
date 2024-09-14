@@ -1,4 +1,3 @@
-#![feature(lazy_cell)]
 //! tests/health_check.rs
 
 // `tokio::test` is the testing equivalent of `tokio::main`.
@@ -7,7 +6,6 @@
 // You can inspect what code gets generated using
 // `cargo expand --test health_check` (<- name of the test file)
 use once_cell::sync::Lazy;
-use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
@@ -86,7 +84,7 @@ async fn spawn_app() -> TestApp {
 pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     // Create database
     let mut connection =
-        PgConnection::connect(&config.connection_string_without_db().expose_secret())
+        PgConnection::connect_with(&config.without_db())
             .await
             .expect("Failed to connection to Postgres");
 
@@ -96,7 +94,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .expect("Failed to create database.");
 
     // Migrate database
-    let connection_pool = PgPool::connect(config.connection_string().expose_secret())
+    let connection_pool = PgPool::connect_with(config.with_db())
         .await
         .expect("Failed to connect to Postgres.");
 

@@ -1,5 +1,8 @@
 # Migrate 
 
 ```bash
+psql -h localhost -p 5432 -U postgres
+create database newsletter;
+create database subscriptions;
 sqlx migrate run --database-url=postgres://postgres:password@127.0.0.1:5432/newsletter
 ```
