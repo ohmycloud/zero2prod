@@ -26,7 +26,7 @@ COPY . .
 # To look at the saved metadata instead of trying to query a live database
 ENV SQLX_OFFLINE true
 # Build our project
-RUN cargo build --release -bin zero2prod
+RUN cargo build --release --bin zero2prod
 
 # Runtime stage
 FROM debian:bookworm-slim AS runtime
