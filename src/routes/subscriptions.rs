@@ -55,7 +55,7 @@ pub async fn insert_subscriber(
         "#,
         Uuid::new_v4(),
         new_subscriber.email,
-        new_subscriber.name.inner_ref(),
+        new_subscriber.name.as_ref(),
         Utc::now()
     )
     .execute(pool)
@@ -73,7 +73,7 @@ pub fn is_valid_name(s: &str) -> bool {
     // `.trim()` returns a view over the input `s` without trailing
     // whitespace-like characters.
     // `.is_empty` checks if the view contains any character.
-    let is_emptyor_whitespace = s.trim().is_empty();
+    let is_empty_or_whitespace = s.trim().is_empty();
 
     // A grapheme is defined by the Unicode standard as a "user-perceived"
     // character: `å` is a single grapheme, but it is composed of two characters
@@ -88,5 +88,5 @@ pub fn is_valid_name(s: &str) -> bool {
         .chars()
         .any(|g| forbidden_characters.contains(&g));
     // Return `false` if any of our conditions have been violated
-    !(is_emptyor_whitespace || is_too_long || contains_forbidden_characters)
+    !(is_empty_or_whitespace || is_too_long || contains_forbidden_characters)
 }
