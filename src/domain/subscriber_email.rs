@@ -1,6 +1,6 @@
 use validator::ValidateEmail;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubscriberEmail(String);
 
 impl SubscriberEmail {
@@ -26,6 +26,17 @@ mod tests {
     use fake::Fake;
     use fake::faker::internet::raw::SafeEmail;
     use fake::locales::EN;
+    use quickcheck::{Arbitrary, Gen};
+
+    // Both `Clone` and `Debug` are required by `quickcheck`
+    #[derive(Debug, Clone)]
+    struct ValidEmailFixture(pub String);
+    impl Arbitrary for ValidEmailFixture {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let email = SafeEmail(EN).fake_with_rng(g);
+            Self(email)
+        }
+    }
 
     #[test]
     fn empty_email_is_rejected() {
@@ -45,9 +56,9 @@ mod tests {
         assert_err!(SubscriberEmail::parse(email));
     }
 
-    #[test]
-    fn valid_email_are_parsed_successfully() {
-        let email = SafeEmail(EN).fake();
-        claims::assert_ok!(SubscriberEmail::parse(email));
+    #[quickcheck_macros::quickcheck]
+    fn valid_email_are_parsed_successfully(valid_email: ValidEmailFixture) -> bool {
+        dbg!(&valid_email.0);
+        SubscriberEmail::parse(valid_email.0).is_ok()
     }
 }
