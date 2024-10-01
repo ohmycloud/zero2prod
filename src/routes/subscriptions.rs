@@ -3,7 +3,7 @@ use sqlx::types::chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
 use unicode_segmentation::UnicodeSegmentation;
-use crate::domain::{NewSubscriber, SubscriberName};
+use crate::domain::subscriber_name::{NewSubscriber, SubscriberName};
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
