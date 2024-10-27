@@ -1,8 +1,10 @@
 use secrecy::ExposeSecret;
 use secrecy::Secret;
-use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use serde_aux::prelude::deserialize_number_from_string;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::ConnectOptions;
+
+use crate::domain::SubscriberEmail;
 
 /// The possible runtime environment for our application.
 enum Environment {
@@ -39,6 +41,13 @@ impl TryFrom<String> for Environment {
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
+    pub email_client: EmailClientSettings,
+}
+
+#[derive(serde::Deserialize)]
+pub struct EmailClientSettings {
+    pub base_url: String,
+    pub sender_email: String,
 }
 
 #[derive(serde::Deserialize)]
@@ -88,7 +97,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
         .add_source(
             config::Environment::with_prefix("APP")
                 .prefix_separator("_")
-                .separator("__")
+                .separator("__"),
         )
         .build()?;
 
@@ -115,5 +124,11 @@ impl DatabaseSettings {
             .password(self.password.expose_secret())
             .port(self.port)
             .ssl_mode(ssl_mode)
+    }
+}
+
+impl EmailClientSettings {
+    pub fn sender(&self) -> Result<SubscriberEmail, String> {
+        SubscriberEmail::parse(self.sender_email.clone())
     }
 }
