@@ -3,6 +3,7 @@ use reqwest::Client;
 use secrecy::{ExposeSecret, Secret};
 
 #[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
 struct SendEmailRequest {
     from: String,
     to: String,
@@ -72,6 +73,27 @@ mod tests {
     use fake::faker::internet::en::SafeEmail;
     use fake::{Fake, Faker};
 
+    struct SendEmailBodyMatcher;
+    impl wiremock::Match for SendEmailBodyMatcher {
+        fn matches(&self, request: &wiremock::Request) -> bool {
+            // try to parse the body as a JSON value
+            let result: Result<serde_json::Value, _> = serde_json::from_slice(&request.body);
+            if let Ok(body) = result {
+                dbg!(&body);
+                // check that all the mandatory fields are populated
+                // without inspecting the field values
+                body.get("From").is_some()
+                    && body.get("To").is_some()
+                    && body.get("Subject").is_some()
+                    && body.get("HtmlBody").is_some()
+                    && body.get("TextBody").is_some()
+            } else {
+                // if paring failed, do not match the request
+                false
+            }
+        }
+    }
+
     #[tokio::test]
     async fn send_email_fires_a_request_to_base_url() {
         // Arrange
@@ -83,6 +105,7 @@ mod tests {
             .and(header("Content-Type", "application/json"))
             .and(path("/email"))
             .and(method("POST"))
+            .and(SendEmailBodyMatcher)
             .respond_with(ResponseTemplate::new(200))
             .expect(1)
             .mount(&mock_server)
