@@ -79,7 +79,6 @@ mod tests {
             // try to parse the body as a JSON value
             let result: Result<serde_json::Value, _> = serde_json::from_slice(&request.body);
             if let Ok(body) = result {
-                dbg!(&body);
                 // check that all the mandatory fields are populated
                 // without inspecting the field values
                 body.get("From").is_some()
@@ -95,7 +94,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn send_email_fires_a_request_to_base_url() {
+    async fn send_email_sends_the_expected_request() {
         // Arrange
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
