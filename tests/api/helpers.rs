@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
 use sqlx::PgPool;
+use wiremock::MockServer;
 use zero2prod::configuration::get_configuration;
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -25,6 +26,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
+    pub email_server: MockServer,
 }
 
 impl TestApp {
@@ -44,7 +46,11 @@ pub async fn spawn_app() -> TestApp {
     // All other invocations will instead skip execution.
     Lazy::force(&TRACING);
 
-    let configuration = get_configuration().expect("Failed to get configuration");
+    // Launch a mock server to stand in for Postmark's API
+    let email_server = MockServer::start().await;
+
+    let mut configuration = get_configuration().expect("Failed to get configuration");
+    configuration.email_client.base_url = email_server.uri();
     let application = Application::build(configuration.clone())
         .await
         .expect("Failed to build application.");
@@ -56,5 +62,6 @@ pub async fn spawn_app() -> TestApp {
     TestApp {
         address,
         db_pool: get_connection_pool(&configuration.database),
+        email_server,
     }
 }
