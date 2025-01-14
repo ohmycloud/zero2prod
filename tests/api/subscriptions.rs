@@ -1,7 +1,7 @@
 use crate::helpers::spawn_app;
 
 #[tokio::test]
-async fn subscribe_returns_a_200_for_valid_form_daya() {
+async fn subscribe_returns_a_200_for_valid_form_data() {
     // Arrange
     let app = spawn_app().await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
