@@ -1,9 +1,9 @@
+use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 use actix_web::{web, HttpResponse};
 use sqlx::types::chrono::Utc;
 use sqlx::PgPool;
-use uuid::Uuid;
 use unicode_segmentation::UnicodeSegmentation;
-use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
+use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -18,7 +18,7 @@ impl TryFrom<FormData> for NewSubscriber {
         let name = SubscriberName::parse(value.name)?;
         let email = SubscriberEmail::parse(value.email)?;
 
-        Ok( Self { email, name })
+        Ok(Self { email, name })
     }
 }
 
@@ -36,10 +36,7 @@ pub fn parse_subscrber(form: FormData) -> Result<NewSubscriber, String> {
         subscriber_name = %form.name
     )
 )]
-pub async fn subscribe(
-    form: web::Form<FormData>,
-    pool: web::Data<PgPool>
-) -> HttpResponse {
+pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> HttpResponse {
     let new_subscriber = match form.0.try_into() {
         Ok(subscriber) => subscriber,
         Err(_) => return HttpResponse::BadRequest().finish(),
@@ -57,12 +54,12 @@ pub async fn subscribe(
 )]
 pub async fn insert_subscriber(
     pool: &PgPool,
-    new_subscriber: &NewSubscriber
+    new_subscriber: &NewSubscriber,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
-        INSERT INTO subscriptions (id, email, name, subscribed_at)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO subscriptions (id, email, name, subscribed_at, status)
+        VALUES ($1, $2, $3, $4, 'confirmed')
         "#,
         Uuid::new_v4(),
         new_subscriber.email.as_ref(),
@@ -95,9 +92,7 @@ pub fn is_valid_name(s: &str) -> bool {
     // Iterate over all characters in the input `s` to check if any of them matches
     // one of the characters in the forbidden array.
     let forbidden_characters = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
-    let contains_forbidden_characters = s
-        .chars()
-        .any(|g| forbidden_characters.contains(&g));
+    let contains_forbidden_characters = s.chars().any(|g| forbidden_characters.contains(&g));
     // Return `false` if any of our conditions have been violated
     !(is_empty_or_whitespace || is_too_long || contains_forbidden_characters)
 }
