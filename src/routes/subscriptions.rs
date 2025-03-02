@@ -52,29 +52,13 @@ pub async fn subscribe(
         return HttpResponse::InternalServerError().finish();
     }
 
-    let confirmation_link = "https://there-is-no-such-domain.com/subscriptions/confirm";
-
-    // Send a (useless) email to the new subscriber.
-    // We are ignoring email delivery errors for now.
-    if email_client
-        .send_email(
-            new_subscriber.email,
-            "Welcome",
-            &format!(
-                "Welcome to our new newsletter!<br />\
-                Click <a href=\"{}\">here</a> to confirm your subscription.",
-                confirmation_link
-            ),
-            &format!(
-                "Welcome to our newsletter!\nVisit {} to confirm your subscription.",
-                confirmation_link
-            ),
-        )
+    if send_confirmation_email(&email_client, new_subscriber)
         .await
         .is_err()
     {
         return HttpResponse::InternalServerError().finish();
     }
+
     HttpResponse::Ok().finish()
 }
 
@@ -125,4 +109,28 @@ pub fn is_valid_name(s: &str) -> bool {
     let contains_forbidden_characters = s.chars().any(|g| forbidden_characters.contains(&g));
     // Return `false` if any of our conditions have been violated
     !(is_empty_or_whitespace || is_too_long || contains_forbidden_characters)
+}
+
+#[tracing::instrument(
+    name = "Send a confirmation email to a new subscriber",
+    skip(email_client, new_subscriber)
+)]
+pub async fn send_confirmation_email(
+    email_client: &EmailClient,
+    new_subscriber: NewSubscriber,
+) -> Result<(), reqwest::Error> {
+    let confirmation_link = "https://there-is-no-such-domain.com/subscriptions/confirm";
+    let plain_body = format!(
+        "Welcome to our newsletter!\nVisit {} to confirm your subscription.",
+        confirmation_link
+    );
+    let html_body = format!(
+        "Welcome to our new newsletter!<br />\
+        Click <a href=\"{}\">here</a> to confirm your subscription.",
+        confirmation_link
+    );
+
+    email_client
+        .send_email(new_subscriber.email, "Welcome", &html_body, &plain_body)
+        .await
 }
