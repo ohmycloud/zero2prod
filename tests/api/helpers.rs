@@ -23,6 +23,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
     }
 });
 
+#[derive(Debug)]
 pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
