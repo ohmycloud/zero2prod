@@ -1,6 +1,7 @@
 mod health_check;
 mod helpers;
 mod subscriptions;
+mod subscriptions_confirm;
 
 use zero2prod::configuration::get_configuration;
 use zero2prod::startup::Application;
