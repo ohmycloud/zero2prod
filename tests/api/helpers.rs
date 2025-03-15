@@ -55,9 +55,10 @@ pub async fn spawn_app() -> TestApp {
     let application = Application::build(configuration.clone())
         .await
         .expect("Failed to build application.");
+    let port = email_server.address().port();
 
     // Got the port before spawning the application
-    let address = format!("http://127.0.0.1:{}", application.port());
+    let address = format!("http://127.0.0.1:{}", port);
     let _ = tokio::spawn(application.run_until_stopped());
 
     TestApp {
