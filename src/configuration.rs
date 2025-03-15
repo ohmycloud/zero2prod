@@ -1,8 +1,8 @@
 use secrecy::ExposeSecret;
 use secrecy::Secret;
 use serde_aux::prelude::deserialize_number_from_string;
-use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::ConnectOptions;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
 
 use crate::domain::SubscriberEmail;
 
@@ -57,6 +57,7 @@ pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
+    pub base_url: String,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
