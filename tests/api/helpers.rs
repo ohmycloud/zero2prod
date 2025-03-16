@@ -1,7 +1,8 @@
-use sqlx::PgPool;
+use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
+use uuid::Uuid;
 use wiremock::MockServer;
-use zero2prod::configuration::get_configuration;
+use zero2prod::configuration::{DatabaseSettings, get_configuration};
 use zero2prod::startup::{Application, get_connection_pool};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -26,6 +27,7 @@ static TRACING: LazyLock<()> = LazyLock::new(|| {
 #[derive(Debug)]
 pub struct TestApp {
     pub address: String,
+    pub port: u16,
     pub db_pool: PgPool,
     pub email_server: MockServer,
 }
@@ -42,6 +44,29 @@ impl TestApp {
     }
 }
 
+pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
+    // Create database
+    let mut connection = PgConnection::connect_with(&config.without_db())
+        .await
+        .expect("Failed to connect to Postgres");
+    connection
+        .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
+        .await
+        .expect("Failed to create database.");
+
+    // Migrate database
+    let connection_pool = PgPool::connect_with(config.with_db())
+        .await
+        .expect("Failed to connect to Postgres.");
+    // `sqlx::migrate!` is the same macro used by sqlx-cli when executing sqlx migrate run
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate the database");
+
+    connection_pool
+}
+
 pub async fn spawn_app() -> TestApp {
     // The first time `initialize` is invoked the code in `TRACING` is executed.
     // All other invocations will instead skip execution.
@@ -50,19 +75,33 @@ pub async fn spawn_app() -> TestApp {
     // Launch a mock server to stand in for Postmark's API
     let email_server = MockServer::start().await;
 
-    let mut configuration = get_configuration().expect("Failed to get configuration");
-    configuration.email_client.base_url = email_server.uri();
+    // Randomise configuration to ensure test isolation
+    let configuration = {
+        let mut config = get_configuration().expect("Failed to read configuration.");
+        // Use a different database for each test case
+        config.database.database_name = Uuid::new_v4().to_string();
+        // Use a random OS port
+        config.application.port = 0;
+        // Use the mock server as email API
+        config.email_client.base_url = email_server.uri();
+        config
+    };
+
+    // Create and migrate the database
+    configure_database(&configuration.database).await;
+
     let application = Application::build(configuration.clone())
         .await
         .expect("Failed to build application.");
-    let port = email_server.address().port();
+    let application_port = application.port();
 
     // Got the port before spawning the application
-    let address = format!("http://127.0.0.1:{}", port);
+    let address = format!("http://localhost:{}", application_port);
     let _ = tokio::spawn(application.run_until_stopped());
 
     TestApp {
         address,
+        port: application_port,
         db_pool: get_connection_pool(&configuration.database),
         email_server,
     }
