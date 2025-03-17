@@ -127,7 +127,7 @@ async fn subscribe_returns_a_confirmation_email_with_a_link() {
             .collect();
 
         assert_eq!(links.len(), 1);
-        links[0].as_str().to_owned();
+        links[0].as_str().to_owned()
     };
 
     let html_link = get_link(&body["HtmlBody"].as_str().unwrap());

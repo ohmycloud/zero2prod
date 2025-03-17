@@ -14,7 +14,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn build(configuration: Settings) -> Result<Self, std::io::Error> {
+    pub async fn build(configuration: Settings) -> anyhow::Result<Self, std::io::Error> {
         let connection_pool = get_connection_pool(&configuration.database);
         let sender_email = configuration
             .email_client
@@ -33,7 +33,7 @@ impl Application {
         );
 
         let listener = TcpListener::bind(address)?;
-        let port = listener.local_addr().unwrap().port();
+        let port = listener.local_addr()?.port();
         let server = run(
             listener,
             connection_pool,

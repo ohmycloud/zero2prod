@@ -1,7 +1,7 @@
 use anyhow::Ok;
 use reqwest::Url;
 use wiremock::matchers::{method, path};
-use wiremock::{Mock, ResponseTemplate};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::helpers::spawn_app;
 
@@ -34,9 +34,28 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called() -> anyhow::Res
         .mount(&app.email_server)
         .await;
 
+    // let mock_server = MockServer::start().await;
+    // let address = format!("{}/subscriptions", &mock_server.uri());
+    // let response = surf::post(address)
+    //     .header("Content-Type", "application/x-www-form-urlencoded")
+    //     .body(body)
+    //     .await
+    //     .unwrap();
+    //
+    reqwest::Client::new()
+        .post(format!("{}/subscriptions", &app.email_server.uri()))
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(body)
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
     app.post_subscriptions(body.into()).await;
-    let email_request = &app.email_server.received_requests().await.unwrap()[0];
-    let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
+
+    let received_requests = &app.email_server.received_requests().await.unwrap();
+    assert_eq!(received_requests.len(), 1);
+    let email_request = &received_requests[0];
+    let body: serde_json::Value = email_request.body_json().unwrap();
 
     // Extract the link from one of the request fields.
     let get_link = |s: &str| {

@@ -96,7 +96,7 @@ pub async fn spawn_app() -> TestApp {
     let application_port = application.port();
 
     // Got the port before spawning the application
-    let address = format!("http://localhost:{}", application_port);
+    let address = format!("http://127.0.0.1:{}", application_port);
     let _ = tokio::spawn(application.run_until_stopped());
 
     TestApp {

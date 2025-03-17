@@ -42,6 +42,8 @@ unicode-segmentation = "1.12.0"
 claims = "0.7.1"
 validator = "0.18.1"
 rand = "0.8.5"
+anyhow = "1.0.97"
+surf = "2.3.2"
 
 [dependencies.sqlx]
 version = "0.7.4"
