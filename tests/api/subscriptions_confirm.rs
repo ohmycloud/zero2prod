@@ -1,5 +1,4 @@
 use anyhow::Ok;
-use reqwest::Url;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -38,28 +37,10 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called() -> anyhow::Res
     let received_requests = &app.email_server.received_requests().await.unwrap();
     assert_eq!(received_requests.len(), 1);
     let email_request = &received_requests[0];
-    let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
-
-    // Extract the link from one of the request fields.
-    let get_link = |s: &str| {
-        let links: Vec<_> = linkify::LinkFinder::new()
-            .links(s)
-            .filter(|l| *l.kind() == linkify::LinkKind::Url)
-            .collect();
-        assert_eq!(links.len(), 1);
-        links[0].as_str().to_owned()
-    };
-
-    let raw_confirmation_link = &get_link(&body["HtmlBody"].as_str().unwrap());
-    let mut confirmation_link = Url::parse(raw_confirmation_link)?;
-
-    // Let's make sure we don't call random APIs on the web
-    assert_eq!(confirmation_link.host_str().unwrap(), "127.0.0.1");
-    // Let's rewrite the URL to include the port
-    confirmation_link.set_port(Some(app.port)).unwrap();
+    let confirmation_links = app.get_confirmation_links(email_request);
 
     // Act
-    let response = reqwest::get(confirmation_link).await?;
+    let response = reqwest::get(confirmation_links.html).await?;
     // Assert
     assert_eq!(response.status().as_u16(), 200);
     Ok(())
