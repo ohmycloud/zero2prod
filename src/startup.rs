@@ -72,6 +72,8 @@ pub fn run(
     let db_pool = web::Data::new(db_pool);
     // Warp the Email Client using web::Data
     let email_client = web::Data::new(email_client);
+    // Warp the base url using web::Data
+    let base_url = web::Data::new(ApplicationBaseUrl(base_url));
     // Capture `connection` from the surrounding environment
     let server = HttpServer::new(move || {
         App::new()

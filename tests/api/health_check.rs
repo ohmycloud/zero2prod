@@ -1,7 +1,6 @@
-use anyhow::Ok;
 use surf::StatusCode;
 use wiremock::{
-    Mock, MockServer, ResponseTemplate, http,
+    Mock, MockServer, ResponseTemplate,
     http::Method,
     matchers::{method, path},
 };
