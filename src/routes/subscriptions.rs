@@ -83,18 +83,18 @@ pub async fn subscribe(
 
 #[tracing::instrument(
     name = "Store subscription token in the database",
-    skip(subscription_token, pool)
+    skip(pool, subscription_id, subscription_token)
 )]
 pub async fn store_token(
     pool: &PgPool,
-    subscriber_id: Uuid,
+    subscription_id: Uuid,
     subscription_token: &str,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        r#"INSERT INTO subscription_tokens (subscription_token, subscriber_id)
+        r#"INSERT INTO subscription_tokens (subscription_token, subscription_id)
         VALUES ($1, $2)"#,
         subscription_token,
-        subscriber_id,
+        subscription_id,
     )
     .execute(pool)
     .await
@@ -107,7 +107,7 @@ pub async fn store_token(
 
 #[tracing::instrument(
     name = "Saving new subscriber details in the database",
-    skip(new_subscriber, pool)
+    skip(pool, new_subscriber)
 )]
 pub async fn insert_subscriber(
     pool: &PgPool,
