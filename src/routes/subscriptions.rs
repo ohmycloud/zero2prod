@@ -1,6 +1,7 @@
 use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 use crate::email_client::EmailClient;
 use crate::startup::ApplicationBaseUrl;
+use crate::utils::error_chain_fmt;
 use actix_web::ResponseError;
 use actix_web::{HttpResponse, web};
 use rand::distributions::Alphanumeric;
@@ -14,7 +15,7 @@ pub struct StoreTokenError(sqlx::Error);
 
 impl std::fmt::Debug for StoreTokenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}\nCaused by:\n\t{}", self, self.0)
+        error_chain_fmt(self, f)
     }
 }
 
