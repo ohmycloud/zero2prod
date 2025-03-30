@@ -2,12 +2,15 @@ use actix_web::HttpResponse;
 use actix_web::ResponseError;
 use actix_web::http::StatusCode;
 use actix_web::web;
+use anyhow::Context;
 use sqlx::PgPool;
 
+use crate::domain::SubscriberEmail;
+use crate::email_client::EmailClient;
 use crate::utils::error_chain_fmt;
 
 struct ConfirmedSubscriber {
-    email: String,
+    email: SubscriberEmail,
 }
 
 #[derive(serde::Deserialize)]
@@ -46,8 +49,15 @@ impl ResponseError for PublishError {
 async fn get_confirmed_subscribers(
     pool: &PgPool,
 ) -> Result<Vec<ConfirmedSubscriber>, anyhow::Error> {
+    // We only need `Row` to map the data coming out of this query.
+    // Nesting its definition inside the function itself is a simple way
+    // to clearly communicate this coupling (and to ensure it doesn't
+    // get used elsewhere by mistake).
+    struct Row {
+        email: String,
+    }
     let rows = sqlx::query_as!(
-        ConfirmedSubscriber,
+        Row,
         r#"
         SELECT email
         FROM subscriptions
@@ -57,7 +67,22 @@ async fn get_confirmed_subscribers(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows)
+    // Map into the domain type
+    let confirmed_subscribers = rows
+        .into_iter()
+        .filter_map(|r| match SubscriberEmail::parse(r.email) {
+            Ok(email) => Some(ConfirmedSubscriber { email }),
+            Err(error) => {
+                tracing::warn!(
+                    "A confirmed subscriber is using an invalid email address.\n{}.",
+                    error
+                );
+                None
+            }
+        })
+        .collect();
+
+    Ok(confirmed_subscribers)
 }
 
 // We are prefixing `body` with a `_` to avoid
@@ -65,7 +90,23 @@ async fn get_confirmed_subscribers(
 pub async fn publish_newsletter(
     body: web::Json<BodyData>,
     pool: web::Data<PgPool>,
+    email_client: web::Data<EmailClient>,
 ) -> Result<HttpResponse, PublishError> {
     let subscribers = get_confirmed_subscribers(&pool).await?;
+
+    for subscriber in subscribers {
+        email_client
+            .send_email(
+                subscriber.email.clone(),
+                &body.title,
+                &body.content.html,
+                &body.content.text,
+            )
+            .await
+            .with_context(|| {
+                format!("Failed to send newsletter issue to {:?}", subscriber.email)
+            })?;
+    }
+
     Ok(HttpResponse::Ok().finish())
 }
