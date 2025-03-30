@@ -37,6 +37,8 @@ pub struct BodyData {
 
 #[derive(thiserror::Error)]
 pub enum PublishError {
+    #[error("Authentication failed")]
+    AuthError(#[source] anyhow::Error),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
 }
@@ -50,6 +52,8 @@ impl std::fmt::Debug for PublishError {
 impl ResponseError for PublishError {
     fn status_code(&self) -> StatusCode {
         match self {
+            // Return a 401 for auth errors
+            PublishError::AuthError(_) => StatusCode::UNAUTHORIZED,
             PublishError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -92,7 +96,9 @@ pub async fn publish_newsletter(
     email_client: web::Data<EmailClient>,
     request: HttpRequest,
 ) -> Result<HttpResponse, PublishError> {
-    let _credentials = basic_authentication(request.headers());
+    let _credentials = basic_authentication(request.headers())
+        // Bubble up the error, performing the necessary conversion
+        .map_err(PublishError::AuthError)?;
     let subscribers = get_confirmed_subscribers(&pool).await?;
 
     for subscriber in subscribers {
