@@ -2,14 +2,15 @@ use actix_web::HttpRequest;
 use actix_web::HttpResponse;
 use actix_web::ResponseError;
 use actix_web::http::header::HeaderMap;
-use actix_web::http::header::{Header, HeaderValue};
+use actix_web::http::header::HeaderValue;
 use actix_web::http::{StatusCode, header};
 use actix_web::web;
 use anyhow::Context;
+use argon2::PasswordHasher;
+use argon2::{Algorithm, Argon2, Params, Version};
 use base64::Engine;
 use secrecy::ExposeSecret;
 use secrecy::Secret;
-use sha3::Digest;
 use sqlx::PgPool;
 
 use crate::domain::SubscriberEmail;
@@ -107,9 +108,39 @@ async fn validate_credentials(
     credentials: Credentials,
     pool: &PgPool,
 ) -> Result<uuid::Uuid, PublishError> {
-    let password_hash = sha3::Sha3_256::digest(credentials.password.expose_secret().as_bytes());
+    let hasher = Argon2::new(
+        Algorithm::Argon2id,
+        Version::V0x13,
+        Params::new(15000, 2, 1, None)
+            .context("Failed to build Argon2 parameters")
+            .map_err(PublishError::UnexpectedError)?,
+    );
+    let row: Option<_> = sqlx::query!(
+        r#"
+        SELECT user_id, password_hash, salt
+        FROM users
+        WHERE username = $1
+        "#,
+        credentials.username
+    )
+    .fetch_optional(pool)
+    .await
+    .context("Failed to perform a query to retrieve stored credentials.")
+    .map_err(PublishError::UnexpectedError)?;
+
+    let (expected_password_hash, user_id, salt) = match row {
+        Some(row) => (row.password_hash, row.user_id, row.salt),
+        None => return Err(PublishError::AuthError(anyhow::anyhow!("Unknow username."))),
+    };
+
+    let password_hash = hasher
+        .hash_password(credentials.password.expose_secret().as_bytes(), &salt)
+        .context("Failed to hash password.")
+        .map_err(PublishError::UnexpectedError)?;
+
     // Lowercase hexadecimal encoding
-    let password_hash = format!("{:x}", password_hash);
+    let password_hash = format!("{:x}", password_hash.hash.unwrap());
+
     let user_id: Option<_> = sqlx::query!(
         r#"
         SELECT user_id
