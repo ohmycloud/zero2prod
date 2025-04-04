@@ -155,8 +155,12 @@ async fn validate_credentials(
         .map_err(PublishError::UnexpectedError)?
         .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknow username.")))?;
 
+    let current_span = tracing::Span::current();
     tokio::task::spawn_blocking(move || {
-        verify_password_hash(expected_password_hash, credentials.password)
+        // We then pass ownership to it into the closure
+        // and explicitly executes all our computation
+        // within its scope.
+        current_span.in_scope(|| verify_password_hash(expected_password_hash, credentials.password))
     })
     .await
     // spawn_blocking is falliable - we have a nested Result here!
