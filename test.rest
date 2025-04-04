@@ -2,3 +2,8 @@ curl --request POST \
     --data 'name=le%20guin&email=ursula_le_guin%40gmail.com' \
     https://zero2prod-vflgx.ondigitalocean.app/subscriptions \
     --verbose
+
+curl --request POST \
+    --data 'username=ursula_le_guin&password=secret' \
+    http://127.0.0.1:8000/login \
+    --verbose
