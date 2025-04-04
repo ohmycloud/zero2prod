@@ -138,15 +138,19 @@ async fn validate_credentials(
         .context("Failed to hash password.")
         .map_err(PublishError::UnexpectedError)?;
 
-    tracing::info_span!("Verify passowrd hash")
-        .in_scope(|| {
+    tokio::task::spawn_blocking(move || {
+        tracing::info_span!("Verify passowrd hash").in_scope(|| {
             Argon2::default().verify_password(
                 credentials.password.expose_secret().as_bytes(),
                 &expected_password_hash,
             )
         })
-        .context("Invalid password.")
-        .map_err(PublishError::AuthError)?;
+    })
+    .await
+    // spawn_blocking is falliable - we have a nested Result here!
+    .context("Failed to spawn blocking task.")
+    .map_err(PublishError::AuthError)?
+    .context("Invalid password.");
 
     Ok(user_id)
 }
