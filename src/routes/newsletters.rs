@@ -150,6 +150,10 @@ fn verify_password_hash(
 async fn validate_credentials(
     credentials: Credentials,
     pool: &PgPool,
+    // We are returning a `PublishError`,
+    // which is a specific error typr detailing
+    // the relevant failure modes of `POST / newsletters`
+    // (not just auth!)
 ) -> Result<uuid::Uuid, PublishError> {
     let mut user_id = None;
     let mut expected_password_hash = Secret::new(
