@@ -1,5 +1,5 @@
 use actix_web::http::StatusCode;
-use actix_web::http::header::{ContentType, LOCATION};
+use actix_web::http::header::LOCATION;
 use actix_web::web;
 use actix_web::{HttpResponse, ResponseError};
 use secrecy::Secret;
@@ -27,8 +27,10 @@ impl std::fmt::Debug for LoginError {
 
 impl ResponseError for LoginError {
     fn error_response(&self) -> HttpResponse {
+        let encoded_error = urlencoding::Encoded::new(self.to_string());
+
         HttpResponse::build(self.status_code())
-            .insert_header((LOCATION, "/login"))
+            .insert_header((LOCATION, format!("/login?error={}", encoded_error)))
             .finish()
     }
 
