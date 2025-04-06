@@ -89,7 +89,10 @@ impl TestApp {
     where
         Body: serde::Serialize,
     {
-        reqwest::Client::new()
+        reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap()
             .post(&format!("{}/login", &self.address))
             // This is `reqwest` method makes sure that the body is URL-encoded
             // and the `Content-Type` header is set accordingly.
