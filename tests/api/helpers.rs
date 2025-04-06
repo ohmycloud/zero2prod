@@ -1,5 +1,6 @@
 use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
+use reqwest::Body;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
 use uuid::Uuid;
@@ -84,6 +85,19 @@ impl TestUser {
 }
 
 impl TestApp {
+    pub async fn post_login<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        reqwest::Client::new()
+            .post(&format!("{}/login", &self.address))
+            // This is `reqwest` method makes sure that the body is URL-encoded
+            // and the `Content-Type` header is set accordingly.
+            .form(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
         reqwest::Client::new()
             .post(&format!("{}/newsletters", &self.address))
