@@ -44,6 +44,7 @@ async fn main() -> Result<(), std::io::Error> {
         connection_pool,
         email_client,
         configuration.application.base_url,
+        configuration.application.hmac_secret,
     )?
     .await
 }
