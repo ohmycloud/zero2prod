@@ -217,3 +217,10 @@ pub async fn spawn_app() -> TestApp {
     test_app.test_user.store(&test_app.db_pool).await;
     test_app
 }
+
+// Little helper function - we will be doing this check several times throughout
+// this chapter and the next one.
+pub fn assert_is_redirect_to(response: &reqwest::Response, location: &str) {
+    assert_eq!(response.status().as_u16(), 303);
+    assert_eq!(response.headers().get("Location").unwrap(), location);
+}
