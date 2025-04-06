@@ -64,6 +64,9 @@ impl Application {
 // a raw `String` would expose us to conflicts.
 pub struct ApplicationBaseUrl(pub String);
 
+#[derive(Clone)]
+pub struct HmacSecret(pub Secret<String>);
+
 // We need to mark `run` as public
 // It is no longer a binary entrypoint, therefore we can mark it as async
 // without having to use any proc-macro incantation.
@@ -98,7 +101,7 @@ pub fn run(
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
-            .app_data(Data::new(hmac_secret.clone()))
+            .app_data(Data::new(HmacSecret(hmac_secret.clone())))
     })
     .listen(listener)?
     .run();
