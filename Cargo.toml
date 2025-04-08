@@ -34,7 +34,7 @@ tracing-subscriber = { version = "0.3.18", features = [
     "registry",
     "env-filter",
 ] }
-uuid = { version = "1.8.0", features = ["v4"] }
+uuid = { version = "1.8.0", features = ["v4", "serde"] }
 secrecy = { version = "0.8.0", features = ["serde"] }
 tracing-actix-web = "0.7.10"
 serde-aux = "4.5.0"

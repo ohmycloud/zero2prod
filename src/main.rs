@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
         timeout,
     );
 
-    run(
+    let _ = run(
         listener,
         connection_pool,
         email_client,

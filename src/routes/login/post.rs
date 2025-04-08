@@ -1,4 +1,4 @@
-use actix_web::cookie::Cookie;
+use actix_session::Session;
 use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
 use actix_web::http::header::LOCATION;
@@ -40,14 +40,23 @@ pub struct FormData {
     password: Secret<String>,
 }
 
+// Redirect to the login page with an error message.
+fn login_redirect(error: LoginError) -> InternalError<LoginError> {
+    FlashMessage::error(error.to_string()).send();
+    let response = HttpResponse::SeeOther()
+        .insert_header((LOCATION, "/login"))
+        .finish();
+    InternalError::from_response(error, response)
+}
+
 #[tracing::instrument(
-    skip(form, pool),
+    skip(form, pool, session),
     fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
 )]
 pub async fn login(
     form: web::Form<FormData>,
     pool: web::Data<PgPool>,
-    // returing a `Result<httpResponse, LoginError>` again!
+    session: Session,
 ) -> Result<HttpResponse, InternalError<LoginError>> {
     let credentials = Credentials {
         username: form.0.username,
@@ -59,8 +68,12 @@ pub async fn login(
         Ok(user_id) => {
             tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
 
+            session
+                .insert("user_id", user_id)
+                .map_err(|e| login_redirect(LoginError::UnExpectedError(e.into())))?;
+
             Ok(HttpResponse::SeeOther()
-                .insert_header((LOCATION, "/"))
+                .insert_header((LOCATION, "/admin/dashboard"))
                 .finish())
         }
         Err(e) => {
@@ -69,11 +82,7 @@ pub async fn login(
                 AuthError::UnexpectedError(_) => LoginError::UnExpectedError(e.into()),
             };
 
-            FlashMessage::error(e.to_string()).send();
-            let response = HttpResponse::SeeOther()
-                .insert_header((LOCATION, "/login"))
-                .finish();
-            Err(InternalError::from_response(e, response))
+            Err(login_redirect(e))
         }
     }
 }
