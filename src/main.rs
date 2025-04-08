@@ -8,7 +8,7 @@ use zero2prod::startup::run;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+async fn main() -> anyhow::Result<()> {
     let subscriber = get_subscriber("zero2prod".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
 
@@ -45,6 +45,8 @@ async fn main() -> Result<(), std::io::Error> {
         email_client,
         configuration.application.base_url,
         configuration.application.hmac_secret,
-    )?
-    .await
+        configuration.redis_uri,
+    )
+    .await;
+    Ok(())
 }
