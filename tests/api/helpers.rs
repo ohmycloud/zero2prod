@@ -85,15 +85,16 @@ impl TestUser {
 }
 
 impl TestApp {
-    pub async fn get_admin_dashboard_html(&self) -> String {
+    pub async fn get_admin_dashboard(&self) -> reqwest::Response {
         self.api_client
             .get(&format!("{}/admin/dashboard", &self.address))
             .send()
             .await
             .expect("Failed to execute request.")
-            .text()
-            .await
-            .unwrap()
+    }
+
+    pub async fn get_admin_dashboard_html(&self) -> String {
+        self.get_admin_dashboard().await.text().await.unwrap()
     }
     // Our tests will only look at the HTML page, therefore
     // we do not expose the underlying reqwest::Response
