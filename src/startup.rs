@@ -1,8 +1,6 @@
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
-use crate::routes::{
-    confirm, health_check, home, login, login_form, publish_newsletter, subscribe,
-};
+use crate::routes::*;
 use actix_session::SessionMiddleware;
 use actix_session::storage::RedisSessionStore;
 use actix_web::cookie::Key;
@@ -117,6 +115,7 @@ pub async fn run(
             .route("/", web::get().to(home))
             .route("/login", web::post().to(login))
             .route("/login", web::get().to(login_form))
+            .route("/admin/dashboard", web::get().to(admin_dashboard))
             // Register the connection as part of the application state
             // Get a pointer copy and attach it to the application state
             .app_data(db_pool.clone())
