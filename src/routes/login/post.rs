@@ -9,6 +9,7 @@ use secrecy::Secret;
 use sqlx::PgPool;
 
 use crate::authentication::AuthError;
+use crate::session_state::TypedSession;
 use crate::{
     authentication::{Credentials, validate_credentials},
     utils::error_chain_fmt,
@@ -56,7 +57,7 @@ fn login_redirect(error: LoginError) -> InternalError<LoginError> {
 pub async fn login(
     form: web::Form<FormData>,
     pool: web::Data<PgPool>,
-    session: Session,
+    session: TypedSession,
 ) -> Result<HttpResponse, InternalError<LoginError>> {
     let credentials = Credentials {
         username: form.0.username,
@@ -70,7 +71,7 @@ pub async fn login(
 
             session.renew();
             session
-                .insert("user_id", user_id)
+                .insert_user_id(user_id)
                 .map_err(|e| login_redirect(LoginError::UnExpectedError(e.into())))?;
 
             Ok(HttpResponse::SeeOther()
