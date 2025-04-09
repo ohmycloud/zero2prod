@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
         timeout,
     );
 
-    let _ = run(
+    run(
         listener,
         connection_pool,
         email_client,
@@ -47,6 +47,8 @@ async fn main() -> anyhow::Result<()> {
         configuration.application.hmac_secret,
         configuration.redis_uri,
     )
-    .await;
+    .await?
+    .await?;
+
     Ok(())
 }

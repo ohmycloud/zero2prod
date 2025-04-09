@@ -125,7 +125,6 @@ pub async fn run(
     })
     .listen(listener)?
     .run();
-    // No .await here!
     Ok(server)
 }
 
