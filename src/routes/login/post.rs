@@ -1,4 +1,3 @@
-use actix_session::Session;
 use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
 use actix_web::http::header::LOCATION;
@@ -36,7 +35,7 @@ impl ResponseError for LoginError {
 }
 
 #[derive(serde::Deserialize)]
-pub struct FormData {
+pub struct UserFormData {
     username: String,
     password: Secret<String>,
 }
@@ -55,7 +54,7 @@ fn login_redirect(error: LoginError) -> InternalError<LoginError> {
     fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
 )]
 pub async fn login(
-    form: web::Form<FormData>,
+    form: web::Form<UserFormData>,
     pool: web::Data<PgPool>,
     session: TypedSession,
 ) -> Result<HttpResponse, InternalError<LoginError>> {

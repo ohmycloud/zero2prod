@@ -3,12 +3,6 @@ use unicode_segmentation::UnicodeSegmentation;
 #[derive(Debug)]
 pub struct SubscriberName(String);
 
-#[derive(Debug)]
-pub struct NewSubscriber {
-    pub email: String,
-    pub name: SubscriberName,
-}
-
 impl SubscriberName {
     /// Returns an instance of `SubscriberName` if the input satisfies all
     /// our validation constraints on subscriber names.
