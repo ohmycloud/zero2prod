@@ -9,3 +9,9 @@ sqlx migrate run --database-url=postgres://postgres:password@127.0.0.1:5432/news
 # or use this script
 SKIP_DOCKER=true ./scripts/init_db.sh
 ```
+
+# Redis setup
+
+```bash
+. ./scripts/init_redis.sh
+```
