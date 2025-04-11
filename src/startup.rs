@@ -116,6 +116,8 @@ pub async fn run(
             .route("/login", web::post().to(login))
             .route("/login", web::get().to(login_form))
             .route("/admin/dashboard", web::get().to(admin_dashboard))
+            .route("/admin/password", web::get().to(change_pasword_form))
+            .route("/admin/password", web::post().to(change_password))
             // Register the connection as part of the application state
             // Get a pointer copy and attach it to the application state
             .app_data(db_pool.clone())
