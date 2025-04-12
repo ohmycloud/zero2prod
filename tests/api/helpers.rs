@@ -280,6 +280,7 @@ pub async fn spawn_app() -> TestApp {
 // Little helper function - we will be doing this check several times throughout
 // this chapter and the next one.
 pub fn assert_is_redirect_to(response: &reqwest::Response, location: &str) {
+    println!("{:?}", response);
     assert_eq!(response.status().as_u16(), 303);
     assert_eq!(response.headers().get("Location").unwrap(), location);
 }
