@@ -115,12 +115,13 @@ pub async fn run(
             .route("/", web::get().to(home))
             .route("/login", web::post().to(login))
             .route("/login", web::get().to(login_form))
-            .route("/admin/dashboard", web::get().to(admin_dashboard))
-            .route("/admin/password", web::get().to(change_pasword_form))
-            .route("/admin/password", web::post().to(change_password))
-            .route("/admin/logout", web::post().to(log_out))
-            // Register the connection as part of the application state
-            // Get a pointer copy and attach it to the application state
+            .service(
+                web::scope("/admin")
+                    .route("/admin/dashboard", web::get().to(admin_dashboard))
+                    .route("/admin/password", web::get().to(change_pasword_form))
+                    .route("/admin/password", web::post().to(change_password))
+                    .route("/admin/logout", web::post().to(log_out)),
+            )
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
