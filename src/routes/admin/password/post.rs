@@ -6,9 +6,9 @@ use secrecy::Secret;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::authentication::AuthError;
 use crate::authentication::Credentials;
 use crate::authentication::validate_credentials;
+use crate::authentication::{AuthError, UserId};
 use crate::routes::admin::dashboard::get_username;
 use crate::{
     session_state::TypedSession,
@@ -35,10 +35,11 @@ async fn reject_anonymous_users(session: TypedSession) -> Result<Uuid, actix_web
 
 pub async fn change_password(
     form: web::Form<FormData>,
-    session: TypedSession,
     pool: web::Data<PgPool>,
+    // No longer injecting TypedSession!
+    user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let user_id = reject_anonymous_users(session).await?;
+    let user_id = user_id.into_inner();
 
     // `Secret<String>` does not implement `Eq`,
     // therefore we need to compare the underlying `String`.
@@ -49,7 +50,7 @@ pub async fn change_password(
         .send();
         return Ok(see_other("/admin/password"));
     }
-    let username = get_username(user_id, &pool).await.map_err(e500)?;
+    let username = get_username(*user_id, &pool).await.map_err(e500)?;
     let credentials = Credentials {
         username,
         password: form.0.current_password,
@@ -65,7 +66,7 @@ pub async fn change_password(
         };
     }
 
-    crate::authentication::change_password(user_id, form.0.new_password, &pool)
+    crate::authentication::change_password(*user_id, form.0.new_password, &pool)
         .await
         .map_err(e500)?;
     FlashMessage::error("Your password has been changed.").send();
