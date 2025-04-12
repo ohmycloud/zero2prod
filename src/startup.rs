@@ -1,3 +1,4 @@
+use crate::authentication::reject_anonymous_users;
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
 use crate::routes::*;
@@ -5,6 +6,7 @@ use actix_session::SessionMiddleware;
 use actix_session::storage::RedisSessionStore;
 use actix_web::cookie::Key;
 use actix_web::dev::Server;
+use actix_web::middleware::from_fn;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer, web};
 use actix_web_flash_messages::FlashMessagesFramework;
@@ -117,6 +119,7 @@ pub async fn run(
             .route("/login", web::get().to(login_form))
             .service(
                 web::scope("/admin")
+                    .wrap(from_fn(reject_anonymous_users))
                     .route("/admin/dashboard", web::get().to(admin_dashboard))
                     .route("/admin/password", web::get().to(change_pasword_form))
                     .route("/admin/password", web::post().to(change_password))
