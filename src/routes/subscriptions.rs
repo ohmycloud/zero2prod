@@ -64,15 +64,15 @@ impl std::error::Error for StoreTokenError {
 }
 
 #[derive(serde::Deserialize)]
-pub struct FormData {
+pub struct SubscriberFormData {
     email: String,
     name: String,
 }
 
-impl TryFrom<FormData> for NewSubscriber {
+impl TryFrom<SubscriberFormData> for NewSubscriber {
     type Error = String;
 
-    fn try_from(value: FormData) -> Result<Self, Self::Error> {
+    fn try_from(value: SubscriberFormData) -> Result<Self, Self::Error> {
         let name = SubscriberName::parse(value.name)?;
         let email = SubscriberEmail::parse(value.email)?;
 
@@ -80,7 +80,7 @@ impl TryFrom<FormData> for NewSubscriber {
     }
 }
 
-pub fn parse_subscrber(form: FormData) -> Result<NewSubscriber, String> {
+pub fn parse_subscrber(form: SubscriberFormData) -> Result<NewSubscriber, String> {
     let name = SubscriberName::parse(form.name)?;
     let email = SubscriberEmail::parse(form.email)?;
     Ok(NewSubscriber { email, name })
@@ -95,7 +95,7 @@ pub fn parse_subscrber(form: FormData) -> Result<NewSubscriber, String> {
     )
 )]
 pub async fn subscribe(
-    form: web::Form<FormData>,
+    form: web::Form<SubscriberFormData>,
     pool: web::Data<PgPool>,
     // Get the email client from the app context
     email_client: web::Data<EmailClient>,

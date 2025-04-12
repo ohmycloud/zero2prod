@@ -9,7 +9,7 @@ use anyhow::Context;
 use sqlx::PgPool;
 
 #[derive(serde::Deserialize)]
-pub struct FormData {
+pub struct NewsletterFormData {
     title: String,
     text_content: String,
     html_content: String,
@@ -55,7 +55,7 @@ async fn get_confirmed_subscribers(
     fields(user_id=%*user_id)
 )]
 pub async fn publish_newsletter(
-    form: web::Form<FormData>,
+    form: web::Form<NewsletterFormData>,
     pool: web::Data<PgPool>,
     user_id: ReqData<UserId>,
     email_client: web::Data<EmailClient>,
