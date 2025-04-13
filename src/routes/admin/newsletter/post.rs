@@ -18,7 +18,7 @@ pub struct NewsletterFormData {
 }
 
 fn success_message() -> FlashMessage {
-    FlashMessage::info("The newsletter issue has been accepted - emails will go out shotly.")
+    FlashMessage::info("The newsletter issue has been accepted - emails will go out shortly.")
 }
 
 // We are prefixing `body` with a `_` to avoid
