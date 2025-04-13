@@ -1,21 +1,21 @@
 use wiremock::{
     Mock, ResponseTemplate,
-    matchers::{any, method, path},
+    matchers::{method, path},
 };
 
 use crate::helpers::{ConfirmationLinks, TestApp, assert_is_redirect_to, spawn_app};
 
 #[tokio::test]
-async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
+async fn newsletter_creation_is_idempotent() {
     // Arrange
     let app = spawn_app().await;
-    create_unconfirmed_subscriber(&app).await;
+    create_confirmed_subscriber(&app).await;
     app.test_user.login(&app).await;
 
-    Mock::given(any())
+    Mock::given(path("/email"))
+        .and(method("POST"))
         .respond_with(ResponseTemplate::new(200))
-        // We assert that no request is fired at Postmark!
-        .expect(0)
+        .expect(1)
         .mount(&app.email_server)
         .await;
 
@@ -23,13 +23,24 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
     let newsletter_request_body = serde_json::json!({
         "title": "Newsletter title",
         "text_content": "Newsletter body as plain text",
-        "html_content": "<p>Newsletter body as HTML</p>"
+        "html_content": "<p>Newsletter body as HTML</p>",
+        // We ecpect the idempotency key as part of the
+        // form data, not as an header
+        "idempotency_key": uuid::Uuid::new_v4().to_string(),
     });
 
     let response = app.post_newsletter(&newsletter_request_body).await;
     assert_is_redirect_to(&response, "/admin/newsletters");
 
     // Act - Part 2 - Follow the redirect
+    let html_page = app.get_newsletter_html().await;
+    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+
+    // Act - Part 3 - Submit newsletter form again
+    let response = app.post_newsletter(&newsletter_request_body).await;
+    assert_is_redirect_to(&response, "/admin/newsletters");
+
+    // Act - Part 4 - Follow the redirect
     let html_page = app.get_newsletter_html().await;
     assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
 
