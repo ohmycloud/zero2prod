@@ -1,7 +1,7 @@
 use crate::authentication::UserId;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
-use crate::idempotency::{IdempotencyKey, NextAction, get_saved_response};
+use crate::idempotency::{IdempotencyKey, NextAction};
 use crate::idempotency::{save_response, try_processing};
 use crate::utils::{e400, e500, see_other};
 use actix_web::HttpResponse;
