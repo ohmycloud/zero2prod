@@ -5,7 +5,7 @@ use fake::{
     faker::{internet::en::SafeEmail, name::en::Name},
 };
 use wiremock::{
-    Mock, MockBuilder, ResponseTemplate,
+    Mock, ResponseTemplate,
     matchers::{any, method, path},
 };
 

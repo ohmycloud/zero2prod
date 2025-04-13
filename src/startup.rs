@@ -38,7 +38,10 @@ impl Application {
             listener,
             connection_pool,
             email_client,
-            configuration.application.base_url,
+            format!(
+                "{}:{}",
+                configuration.application.base_url, configuration.application.port
+            ),
             configuration.application.hmac_secret,
             configuration.redis_uri,
         )
