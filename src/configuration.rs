@@ -1,3 +1,4 @@
+use crate::email_client::EmailClient;
 use secrecy::ExposeSecret;
 use secrecy::Secret;
 use serde_aux::prelude::deserialize_number_from_string;
@@ -54,6 +55,20 @@ pub struct EmailClientSettings {
     pub sender_email: String,
     pub authorization_token: Secret<String>,
     pub timeout_milliseconds: u64,
+}
+
+impl EmailClientSettings {
+    pub fn client(self) -> EmailClient {
+        let sender_email = self.sender().expect("Invalid sender email address.");
+        let timeout = self.timeout();
+
+        EmailClient::new(
+            self.base_url,
+            sender_email,
+            self.authorization_token,
+            timeout,
+        )
+    }
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]

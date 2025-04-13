@@ -1,10 +1,10 @@
 //! main.rs
 
-use sqlx::postgres::PgPoolOptions;
-use std::net::TcpListener;
+use std::fmt::{Debug, Display};
+use tokio::task::JoinError;
 use zero2prod::configuration::get_configuration;
-use zero2prod::email_client::EmailClient;
-use zero2prod::startup::run;
+use zero2prod::issue_delivery_worker::run_worker_until_stopped;
+use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
@@ -12,43 +12,37 @@ async fn main() -> anyhow::Result<()> {
     let subscriber = get_subscriber("zero2prod".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
 
-    // Panic if we can't read configuration
-    let configuration = get_configuration().expect("Failed to read configuration.");
-    // Bubble up the io::Error if we failed to bind the address
-    // Otherwise call .await on our Server
-    let address = format!(
-        "{}:{}",
-        configuration.application.host, configuration.application.port
-    );
-    let listener = TcpListener::bind(address).expect("Failed to bind random port");
     let configuration = get_configuration().expect("Failed to read configuration");
+    let application = Application::build(configuration.clone()).await?;
+    let app_task = tokio::spawn(application.run_until_stopped());
+    let worker_task = tokio::spawn(run_worker_until_stopped(configuration));
 
-    // No longer async, given that we don't actually try to connect!
-    let connection_pool = PgPoolOptions::new().connect_lazy_with(configuration.database.with_db());
-
-    // Build an `EmailClient` using `configuration`
-    let sender_email = configuration
-        .email_client
-        .sender()
-        .expect("Invalid sender email address");
-    let timeout = configuration.email_client.timeout();
-    let email_client = EmailClient::new(
-        configuration.email_client.base_url,
-        sender_email,
-        configuration.email_client.authorization_token,
-        timeout,
-    );
-
-    run(
-        listener,
-        connection_pool,
-        email_client,
-        configuration.application.base_url,
-        configuration.application.hmac_secret,
-        configuration.redis_uri,
-    )
-    .await?
-    .await?;
+    tokio::select! {
+        o = app_task => report_exit("API", o),
+        o = worker_task => report_exit("Background worker", o),
+    }
 
     Ok(())
+}
+
+fn report_exit(task_name: &str, outcome: Result<Result<(), impl Debug + Display>, JoinError>) {
+    match outcome {
+        Ok(Ok(())) => tracing::info!("{} has exited", task_name),
+        Ok(Err(e)) => {
+            tracing::error!(
+                error.cause_chain = ?e,
+                error.message = %e,
+                "{} failed",
+                task_name
+            )
+        }
+        Err(e) => {
+            tracing::error!(
+                error.cause_chain = ?e,
+                error.message = %e,
+                "{}' task failed to complete",
+                task_name
+            )
+        }
+    }
 }
