@@ -1,8 +1,8 @@
 use crate::authentication::UserId;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
-use crate::idempotency::save_response;
-use crate::idempotency::{IdempotencyKey, get_saved_response};
+use crate::idempotency::{IdempotencyKey, NextAction, get_saved_response};
+use crate::idempotency::{save_response, try_processing};
 use crate::utils::{e400, e500, see_other};
 use actix_web::HttpResponse;
 use actix_web::{web, web::ReqData};
@@ -50,6 +50,10 @@ async fn get_confirmed_subscribers(
     Ok(confirmed_subscribers)
 }
 
+fn success_message() -> FlashMessage {
+    FlashMessage::info("The newsletter issue has been published!")
+}
+
 // We are prefixing `body` with a `_` to avoid
 // a compiler warning about unused arguments
 #[tracing::instrument(
@@ -73,13 +77,15 @@ pub async fn publish_newsletter(
     } = form.0;
 
     let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(e400)?;
-    // Return early if we have a saved response in the database
-    if let Some(saved_response) = get_saved_response(&pool, &idempotency_key, *user_id)
+    match try_processing(&pool, &idempotency_key, *user_id)
         .await
         .map_err(e500)?
     {
-        FlashMessage::info("The newsletter issue has been published!").send();
-        return Ok(saved_response);
+        NextAction::StartProcessing => {}
+        NextAction::ReturnSavedResponse(saved_response) => {
+            success_message().send();
+            return Ok(saved_response);
+        }
     }
 
     let subscribers = get_confirmed_subscribers(&pool).await.map_err(e500)?;
@@ -111,6 +117,7 @@ pub async fn publish_newsletter(
     }
 
     FlashMessage::info("The newsletter issue has been published!").send();
+    success_message().send();
     let response = see_other("/admin/newsletters");
     let response = save_response(&pool, &idempotency_key, *user_id, response)
         .await

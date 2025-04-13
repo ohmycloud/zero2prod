@@ -5,6 +5,43 @@ use sqlx::PgPool;
 use sqlx::postgres::PgHasArrayType;
 use uuid::Uuid;
 
+pub enum NextAction {
+    StartProcessing,
+    ReturnSavedResponse(HttpResponse),
+}
+
+pub async fn try_processing(
+    pool: &PgPool,
+    idempotency_key: &IdempotencyKey,
+    user_id: Uuid,
+) -> Result<NextAction, anyhow::Error> {
+    let n_inserted_rows = sqlx::query!(
+        r#"
+        INSERT INTO idempotency (
+            user_id,
+            idempotency_key,
+            created_at
+        )
+        VALUES ($1, $2, now())
+        ON CONFLICT DO NOTHING
+        "#,
+        user_id,
+        idempotency_key.as_ref()
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+
+    if n_inserted_rows > 0 {
+        Ok(NextAction::StartProcessing)
+    } else {
+        let saved_response = get_saved_response(pool, idempotency_key, user_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("We expected a saved response, we didn't find it"))?;
+        Ok(NextAction::ReturnSavedResponse(saved_response))
+    }
+}
+
 #[derive(Debug, sqlx::Type)]
 #[sqlx(type_name = "header_pair")]
 struct HeaderPairRecord {
@@ -26,9 +63,9 @@ pub async fn get_saved_response(
     let response = sqlx::query!(
         r#"
             SELECT
-                response_status_code,
-                response_headers as "response_headers: Vec<HeaderPairRecord>",
-                response_body
+                response_status_code as "response_status_code!",
+                response_headers as "response_headers!: Vec<HeaderPairRecord>",
+                response_body as "response_body!"
             FROM idempotency
             WHERE
               user_id = $1 AND
