@@ -37,7 +37,7 @@ async fn changing_password_works() {
 
     // Act - Part 5 - Follow the redirect
     let response = app.get_login_html().await;
-    assert!(response.contains("<p><i>You have been successfully logged out.</i></p>"));
+    assert!(response.contains("<p><i>You have successfully logged out.</i></p>"));
 
     // Act - Part 6 - Login using the new password
     let login_body = serde_json::json!({
@@ -76,7 +76,7 @@ async fn current_password_must_be_valid() {
 
     // Act - Part 3 - Follow the redirect
     let html_page = app.get_change_password_html().await;
-    assert!(html_page.contains("<p><i>The current password is incorrect.</i></p>"));
+    assert!(html_page.contains("<p><i>The current password is invalid.</i></p>"));
 }
 
 #[tokio::test]

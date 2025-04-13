@@ -51,6 +51,14 @@ pub struct TestUser {
 }
 
 impl TestUser {
+    pub async fn login(&self, app: &TestApp) {
+        app.post_login(&serde_json::json!({
+            "username": &self.username,
+            "password": &self.password
+        }))
+        .await;
+    }
+
     pub fn generate() -> Self {
         Self {
             user_id: Uuid::new_v4(),
@@ -153,13 +161,26 @@ impl TestApp {
             .await
             .expect("Failed to execute request.")
     }
-    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+
+    pub async fn get_newsletter_html(&self) -> String {
+        self.get_newsletter().await.text().await.unwrap()
+    }
+
+    pub async fn get_newsletter(&self) -> reqwest::Response {
         self.api_client
-            .post(&format!("{}/newsletters", &self.address))
-            // No longer randomly generated on the spot!
-            // `reqwest` does all the encoding/formatting heavy-lifting for us.
-            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
-            .json(&body)
+            .get(&format!("{}/admin/newsletters", &self.address))
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
+    pub async fn post_newsletter<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.api_client
+            .post(&format!("{}/admin/newsletters", &self.address))
+            .form(body)
             .send()
             .await
             .expect("Failed to execute request.")
@@ -280,7 +301,6 @@ pub async fn spawn_app() -> TestApp {
 // Little helper function - we will be doing this check several times throughout
 // this chapter and the next one.
 pub fn assert_is_redirect_to(response: &reqwest::Response, location: &str) {
-    println!("{:?}", response);
     assert_eq!(response.status().as_u16(), 303);
     assert_eq!(response.headers().get("Location").unwrap(), location);
 }
